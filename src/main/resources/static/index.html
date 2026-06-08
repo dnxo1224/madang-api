@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>👩‍🎓 고객 목록</title>
+</head>
+<body>
+<h2>👩‍🎓 고객 목록</h2>
+
+<button onclick="loadCustomers()">고객 불러오기</button>
+
+<table border="1">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>이름</th>
+        <th>주소</th>
+        <th>전화번호</th>
+    </tr>
+    </thead>
+    <tbody id="customer-table-body">
+    <!-- fetch로 채워질 내용 -->
+    </tbody>
+</table>
+
+<script>
+    async function loadCustomers() {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+
+      const table = document.getElementById('customer-table-body');
+      table.innerHTML = '';
+
+      data.forEach(customer => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${customer.custid}</td>
+          <td>${customer.name}</td>
+          <td>${customer.address}</td>
+          <td>${customer.phone ?? '없음'}</td>
+        `;
+        table.appendChild(row);
+      });
+    }
+</script>
+</body>
+</html>

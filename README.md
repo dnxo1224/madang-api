@@ -25,7 +25,6 @@
 
 ```
 src/main/java/com/example/walking/
-├── CsvDataLoader.java          # 1회용 CSV 적재기 (ApplicationRunner)
 ├── controller/
 │   ├── CourseController.java   # /api/courses 엔드포인트
 │   ├── WalkLogController.java  # /api/walk-logs, /api/users/me/stats
@@ -159,6 +158,11 @@ POST /api/walk-logs
 # 나의 통계
 GET /api/users/me/stats?userId=1
 ```
+
+### 프로시저
+- sp_toggle_favorite	즐겨찾기 — 없으면 추가, 있으면 삭제	IF/ELSE 분기
+- sp_add_review	리뷰 작성 — 사용자/코스 존재 검증 + INSERT	유효성 검사 포함
+- sp_user_walk_stats	나의 통계 — 횟수·누적거리·자주 간 코스 집계	복잡한 집계 쿼리
 
 ---
 

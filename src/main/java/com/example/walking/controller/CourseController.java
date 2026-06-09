@@ -73,6 +73,18 @@ public class CourseController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * 즐겨찾기 토글 — sp_toggle_favorite 프로시저 호출.
+     * 없으면 추가(ADDED), 있으면 해제(REMOVED) 후 결과 반환.
+     */
+    @PostMapping("/{id}/favorite/toggle")
+    public ResponseEntity<java.util.Map<String, String>> toggleFavorite(
+            @PathVariable("id") String courseId,
+            @RequestParam int userId) {
+        String action = favoriteService.toggle(userId, courseId);
+        return ResponseEntity.ok(java.util.Map.of("action", action));
+    }
+
     /** 후기 작성 (별점) */
     @PostMapping("/{id}/reviews")
     public ResponseEntity<Void> addReview(@PathVariable("id") String courseId,

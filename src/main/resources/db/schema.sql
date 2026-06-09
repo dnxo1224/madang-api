@@ -9,6 +9,7 @@
 DROP TABLE IF EXISTS walk_log;
 DROP TABLE IF EXISTS review;
 DROP TABLE IF EXISTS favorite;
+DROP TABLE IF EXISTS course_ranking;
 DROP TABLE IF EXISTS app_user;
 DROP TABLE IF EXISTS course;
 DROP TABLE IF EXISTS region;
@@ -83,6 +84,19 @@ CREATE TABLE review (
     CHECK (rating BETWEEN 1 AND 5),
     UNIQUE (user_id, course_id),               -- 코스당 1인 1리뷰
     FOREIGN KEY (user_id)   REFERENCES app_user(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES course(course_id) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------
+-- 랭킹 캐시 테이블 (매일 9시 sp_refresh_ranking 이 갱신)
+-- ----------------------------------------------------
+CREATE TABLE course_ranking (
+    rank_type    VARCHAR(20)   NOT NULL,   -- 'ACTIVITY' | 'RATING'
+    rank_no      TINYINT       NOT NULL,   -- 1 ~ 5
+    course_id    VARCHAR(20)   NOT NULL,
+    score        DECIMAL(8,2),            -- 활동 합산 수 또는 평균 평점
+    refreshed_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (rank_type, rank_no),
     FOREIGN KEY (course_id) REFERENCES course(course_id) ON DELETE CASCADE
 );
 

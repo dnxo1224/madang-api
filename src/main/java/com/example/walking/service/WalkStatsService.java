@@ -5,13 +5,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.sql.CallableStatement;
-import java.sql.ResultSet;
-import java.sql.Types;
-import java.util.ArrayList;
 import java.util.List;
 
-/** 나의 산책 통계 — sp_user_walk_stats 프로시저 호출 */
 @Service
 public class WalkStatsService {
 
@@ -21,42 +16,39 @@ public class WalkStatsService {
         this.jdbc = jdbc;
     }
 
-    /**
-     * sp_user_walk_stats 프로시저 호출.
-     * OUT 파라미터: 총 횟수, 누적 거리(km), 누적 시간(분)
-     * Result Set : 자주 간 코스 Top 3
-     */
     public WalkStatsDto getMyStats(int userId) {
-        return jdbc.execute(
-                "{call sp_user_walk_stats(?, ?, ?, ?)}",
-                (CallableStatement cs) -> {
-                    cs.setInt(1, userId);                          // IN  p_user_id
-                    cs.registerOutParameter(2, Types.INTEGER);     // OUT p_walk_count
-                    cs.registerOutParameter(3, Types.DECIMAL);     // OUT p_total_dist_km
-                    cs.registerOutParameter(4, Types.INTEGER);     // OUT p_total_min
-                    cs.execute();
+        WalkStatsDto.Summary summary = jdbc.queryForObject("""
+                SELECT COUNT(*)                              AS walk_count,
+                       ROUND(COALESCE(SUM(c.length_km),0),1) AS total_dist,
+                       COALESCE(SUM(w.spent_min), 0)         AS total_min
+                FROM   walk_log w
+                JOIN   course c ON w.course_id = c.course_id
+                WHERE  w.user_id = ?
+                """,
+                (rs, n) -> new WalkStatsDto.Summary(
+                        rs.getLong("walk_count"),
+                        rs.getBigDecimal("total_dist"),
+                        rs.getLong("total_min")),
+                userId);
 
-                    long walkCount    = cs.getLong(2);
-                    BigDecimal dist   = cs.getBigDecimal(3);
-                    long totalMin     = cs.getLong(4);
+        List<WalkStatsDto.TopCourse> top3 = jdbc.query("""
+                SELECT w.course_id, c.course_name, COUNT(*) AS visit_count
+                FROM   walk_log w
+                JOIN   course c ON w.course_id = c.course_id
+                WHERE  w.user_id = ?
+                GROUP  BY w.course_id, c.course_name
+                ORDER  BY visit_count DESC, c.course_name ASC
+                LIMIT  3
+                """,
+                (rs, n) -> new WalkStatsDto.TopCourse(
+                        rs.getString("course_id"),
+                        rs.getString("course_name"),
+                        rs.getLong("visit_count")),
+                userId);
 
-                    // Result Set — 자주 간 코스 Top 3
-                    List<WalkStatsDto.TopCourse> top3 = new ArrayList<>();
-                    ResultSet rs = cs.getResultSet();
-                    if (rs != null) {
-                        while (rs.next()) {
-                            top3.add(new WalkStatsDto.TopCourse(
-                                    rs.getString("course_id"),
-                                    rs.getString("course_name"),
-                                    rs.getLong("visit_count")));
-                        }
-                    }
-
-                    return new WalkStatsDto(
-                            walkCount,
-                            dist != null ? dist : BigDecimal.ZERO,
-                            totalMin,
-                            top3);
-                });
+        if (summary == null) {
+            summary = new WalkStatsDto.Summary(0L, BigDecimal.ZERO, 0L);
+        }
+        return new WalkStatsDto(summary.walkCount(), summary.totalDist(), summary.totalMin(), top3);
     }
 }

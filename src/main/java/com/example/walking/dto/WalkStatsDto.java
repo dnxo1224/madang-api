@@ -23,6 +23,9 @@ public class WalkStatsDto {
     public long getTotalMinutes() { return totalMinutes; }
     public List<TopCourse> getTopCourses() { return topCourses; }
 
+    /** 집계 중간 결과 (서비스 내부용) */
+    public record Summary(long walkCount, java.math.BigDecimal totalDist, long totalMin) {}
+
     /** 자주 간 코스 한 행 */
     public static class TopCourse {
         private String courseId;

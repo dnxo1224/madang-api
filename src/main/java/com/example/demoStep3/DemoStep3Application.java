@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import javax.sql.DataSource;
 import java.sql.Connection;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.example")
 public class DemoStep3Application {
 
 	public static void main(String[] args) {

@@ -1,47 +1,543 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>👩‍🎓 고객 목록</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>산책ON — 산책 코스 커뮤니티</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+  :root{
+    --green:#2f7d4f; --green-d:#205c39; --green-l:#e8f3ec;
+    --ink:#1f2a24; --muted:#6b7a72; --line:#e2e8e4; --bg:#f6f9f7;
+    --amber:#f2a900; --radius:14px; --shadow:0 4px 18px rgba(20,60,40,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',-apple-system,'Malgun Gothic',sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5}
+  a{color:var(--green-d)}
+  header{background:linear-gradient(120deg,var(--green),var(--green-d));color:#fff;
+    padding:14px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    position:sticky;top:0;z-index:500;box-shadow:var(--shadow)}
+  .brand{font-size:1.35rem;font-weight:700;display:flex;align-items:center;gap:8px}
+  .brand small{font-weight:400;opacity:.85;font-size:.8rem}
+  .userbox{margin-left:auto;display:flex;align-items:center;gap:10px;white-space:nowrap;
+    background:rgba(255,255,255,.15);padding:6px 14px;border-radius:999px;min-width:300px;justify-content:flex-end}
+  .userbox span{flex:0 0 auto}
+  .userbox select{border:0;border-radius:6px;padding:5px 10px;font-weight:600;min-width:150px}
+  nav{display:flex;gap:4px;padding:10px 22px 0;background:#fff;border-bottom:1px solid var(--line);
+    position:sticky;top:56px;z-index:400;flex-wrap:wrap}
+  nav button{border:0;background:transparent;padding:12px 16px;font-size:.96rem;cursor:pointer;
+    color:var(--muted);border-bottom:3px solid transparent;font-weight:600}
+  nav button.active{color:var(--green-d);border-bottom-color:var(--green)}
+  main{max-width:1080px;margin:22px auto;padding:0 18px}
+  .view{display:none} .view.active{display:block}
+  h2.section{margin:.2em 0 .1em;font-size:1.3rem}
+  p.lead{color:var(--muted);margin:.2em 0 1.2em}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;box-shadow:var(--shadow);margin-bottom:18px}
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+  label{font-size:.82rem;color:var(--muted);display:block;margin-bottom:4px;font-weight:600}
+  input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font-size:.95rem;background:#fff}
+  .btn{background:var(--green);color:#fff;border:0;padding:10px 18px;border-radius:9px;
+    font-weight:700;cursor:pointer;font-size:.95rem}
+  .btn:hover{background:var(--green-d)}
+  .btn.ghost{background:#fff;color:var(--green-d);border:1px solid var(--green)}
+  .btn.amber{background:var(--amber);color:#3a2c00}
+  .btn.sm{padding:6px 12px;font-size:.85rem}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;
+    transition:.15s;position:relative}
+  .card.click{cursor:pointer}
+  .card.click:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--green)}
+  .card h3{margin:.1em 0 .4em;font-size:1.05rem}
+  .tag{display:inline-block;background:var(--green-l);color:var(--green-d);font-size:.74rem;
+    padding:2px 9px;border-radius:999px;margin:2px 4px 2px 0;font-weight:600}
+  .meta{color:var(--muted);font-size:.85rem}
+  .empty{color:var(--muted);text-align:center;padding:30px}
+  .rank-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:680px){.rank-grid{grid-template-columns:1fr}}
+  .rank-row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line)}
+  .rank-no{width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;
+    display:grid;place-items:center;font-weight:700;flex:0 0 auto}
+  .rank-no.top{background:var(--amber);color:#3a2c00}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .stat{background:var(--green-l);border-radius:var(--radius);padding:16px;text-align:center}
+  .stat .num{font-size:1.8rem;font-weight:800;color:var(--green-d)}
+  .stat .lbl{color:var(--muted);font-size:.85rem}
+  #map,#detailMap{height:340px;border-radius:var(--radius);margin-top:8px}
+  #detailMap{height:180px}
+  .log-row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .log-row .grow{flex:1;min-width:160px}
+  /* drawer */
+  .scrim{position:fixed;inset:0;background:rgba(20,40,30,.45);display:none;z-index:900}
+  .scrim.open{display:block}
+  .drawer{position:fixed;top:0;right:-460px;width:440px;max-width:92vw;height:100%;background:#fff;
+    z-index:950;box-shadow:-6px 0 24px rgba(0,0,0,.2);transition:right .25s;overflow-y:auto}
+  .drawer.open{right:0}
+  .drawer .dhead{background:var(--green-d);color:#fff;padding:18px 20px;position:sticky;top:0}
+  .drawer .dhead h2{margin:0;font-size:1.2rem}
+  .drawer .body{padding:18px 20px}
+  .close{position:absolute;top:14px;right:16px;background:transparent;border:0;color:#fff;font-size:1.5rem;cursor:pointer}
+  .stars{color:var(--amber);font-size:1.1rem;letter-spacing:2px}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+  .kv b{color:var(--muted);font-weight:600}
+  .subform{background:var(--bg);border-radius:var(--radius);padding:14px;margin-top:14px}
+  .subform h4{margin:0 0 10px}
+  .row{display:flex;gap:8px;align-items:end}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);
+    background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;opacity:0;transition:.3s;z-index:1000;font-weight:600}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#b3261e}
+  .star-pick{font-size:1.8rem;color:#ccc;cursor:pointer;letter-spacing:4px;user-select:none}
+  .star-pick span:hover,.star-pick .on{color:var(--amber)}
+  /* modal */
+  .modal{position:fixed;inset:0;display:none;place-items:center;z-index:960}
+  .modal.open{display:grid}
+  .modal .box{background:#fff;border-radius:var(--radius);padding:22px;width:380px;max-width:92vw;box-shadow:var(--shadow)}
+  .modal .box h3{margin:0 0 4px}
+</style>
 </head>
 <body>
-<h2>👩‍🎓 고객 목록</h2>
 
-<button onclick="loadCustomers()">고객 불러오기</button>
+<header>
+  <div class="brand">🌿 산책ON <small>산책 코스 커뮤니티 데모</small></div>
+  <div class="userbox">
+    <span>현재 사용자</span>
+    <select id="userSel">
+      <option value="1">tester1 · 산책왕</option>
+      <option value="2">tester2 · 걷기달인</option>
+      <option value="3">tester3 · 걷기사랑</option>
+      <option value="4">tester4 · 대전러너</option>
+      <option value="5">tester5 · 충대러너</option>
+    </select>
+  </div>
+</header>
 
-<table border="1">
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>이름</th>
-        <th>주소</th>
-        <th>전화번호</th>
-    </tr>
-    </thead>
-    <tbody id="customer-table-body">
-    <!-- fetch로 채워질 내용 -->
-    </tbody>
-</table>
+<nav id="tabs">
+  <button data-tab="search" class="active">🔍 코스 검색</button>
+  <button data-tab="nearby">📍 내 주변</button>
+  <button data-tab="record">🥾 산책 기록하기</button>
+  <button data-tab="ranking">🏆 랭킹</button>
+  <button data-tab="stats">📊 내 통계</button>
+</nav>
 
+<main>
+  <!-- ===== 검색 ===== -->
+  <section id="view-search" class="view active">
+    <h2 class="section">코스 검색</h2>
+    <p class="lead">전국 산책로 1,600여 개를 지역·난이도·거리로 찾아보세요. 카드를 클릭하면 상세 정보를 볼 수 있습니다.</p>
+    <div class="panel">
+      <div class="filters">
+        <div><label>지역(시·도)</label><input id="f-sido" placeholder="예: 경기, 서울"></div>
+        <div><label>최대 난이도</label>
+          <select id="f-level">
+            <option value="">전체</option>
+            <option value="1">1 매우쉬움 이하</option>
+            <option value="2">2 쉬움 이하</option>
+            <option value="3">3 보통 이하</option>
+            <option value="4">4 어려움 이하</option>
+            <option value="5">5 전체</option>
+          </select></div>
+        <div><label>최대 거리(km)</label><input id="f-len" type="number" min="0" step="0.5" placeholder="예: 10"></div>
+        <div><label>정렬</label>
+          <select id="f-sort">
+            <option value="">이름순</option>
+            <option value="length">거리순</option>
+            <option value="time">시간순</option>
+          </select></div>
+        <div><button class="btn" onclick="searchCourses()">검색</button></div>
+      </div>
+    </div>
+    <div id="search-results" class="cards"></div>
+  </section>
+
+  <!-- ===== 주변 ===== -->
+  <section id="view-nearby" class="view">
+    <h2 class="section">내 주변 코스</h2>
+    <p class="lead">좌표를 기준으로 가까운 코스를 지도에 표시합니다. 거리는 DB 함수 <code>fn_distance_km</code>로 계산합니다.</p>
+    <div class="panel">
+      <div class="filters">
+        <div><label>위도(lat)</label><input id="n-lat" type="number" step="0.0001" value="35.87"></div>
+        <div><label>경도(lon)</label><input id="n-lon" type="number" step="0.0001" value="128.60"></div>
+        <div><label>개수</label><input id="n-limit" type="number" min="1" max="50" value="8"></div>
+        <div><button class="btn" onclick="findNearby()">주변 찾기</button></div>
+        <div><button class="btn ghost" onclick="useMyLocation('n')">📡 현재 위치</button></div>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div id="nearby-results" class="cards"></div>
+  </section>
+
+  <!-- ===== 산책 기록하기 ===== -->
+  <section id="view-record" class="view">
+    <h2 class="section">산책 기록하기</h2>
+    <p class="lead">내 주변 산책로 5곳 중에서 <b>실제로 걸은 코스를 골라</b> 기록합니다. 기록한 코스는 <b>내 통계</b>에서 리뷰를 남길 수 있어요.</p>
+    <div class="panel">
+      <div class="filters">
+        <div><label>위도(lat)</label><input id="r-lat" type="number" step="0.0001" value="35.87"></div>
+        <div><label>경도(lon)</label><input id="r-lon" type="number" step="0.0001" value="128.60"></div>
+        <div><button class="btn" onclick="loadRecordCourses()">주변 코스 5곳 불러오기</button></div>
+        <div><button class="btn ghost" onclick="useMyLocation('r')">📡 현재 위치</button></div>
+      </div>
+    </div>
+    <div id="record-results" class="cards"></div>
+  </section>
+
+  <!-- ===== 랭킹 ===== -->
+  <section id="view-ranking" class="view">
+    <h2 class="section">코스 랭킹 <button class="btn ghost sm" onclick="refreshRanking()">🔄 지금 갱신</button></h2>
+    <p class="lead">매일 09:00 저장 프로시저 <code>sp_refresh_ranking</code>가 갱신합니다. 데모에서는 위 버튼으로 즉시 갱신할 수 있습니다.</p>
+    <div class="rank-grid">
+      <div class="panel"><h3>🔥 활동 TOP 5 <span class="meta">(즐겨찾기+리뷰)</span></h3><div id="rank-activity"></div><div class="meta" id="rank-activity-at"></div></div>
+      <div class="panel"><h3>⭐ 평점 TOP 5 <span class="meta">(평균 별점)</span></h3><div id="rank-rating"></div><div class="meta" id="rank-rating-at"></div></div>
+    </div>
+  </section>
+
+  <!-- ===== 통계 ===== -->
+  <section id="view-stats" class="view">
+    <h2 class="section">내 산책 통계</h2>
+    <p class="lead">현재 사용자의 누적 산책 기록입니다. 상단에서 사용자를 바꿔 비교해 보세요.</p>
+    <div class="panel">
+      <div class="stat-grid">
+        <div class="stat"><div class="num" id="s-count">-</div><div class="lbl">총 산책 횟수</div></div>
+        <div class="stat"><div class="num" id="s-dist">-</div><div class="lbl">누적 거리(km)</div></div>
+        <div class="stat"><div class="num" id="s-min">-</div><div class="lbl">누적 시간(분)</div></div>
+      </div>
+    </div>
+    <div class="panel"><h3>자주 간 코스 TOP 3</h3><div id="s-top"></div></div>
+    <div class="panel">
+      <h3>나의 산책 로그 <span class="meta">(최신순 · 여기서 리뷰 작성)</span></h3>
+      <div id="s-logs"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== 상세 드로어 (읽기 전용 + 즐겨찾기) ===== -->
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="dhead">
+    <button class="close" onclick="closeDrawer()">×</button>
+    <h2 id="d-name">코스명</h2>
+    <div id="d-stars" class="stars"></div>
+  </div>
+  <div class="body" id="d-body"></div>
+</aside>
+
+<!-- ===== 리뷰 모달 ===== -->
+<div class="modal" id="reviewModal">
+  <div class="box">
+    <h3 id="rm-title">리뷰 작성</h3>
+    <p class="meta" id="rm-course"></p>
+    <div class="star-pick" id="rm-stars"></div>
+    <input id="rm-comment" placeholder="한 줄 후기를 남겨보세요" style="margin-top:10px">
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn ghost sm" onclick="closeReview()">취소</button>
+      <button class="btn sm" onclick="submitReview()">리뷰 등록</button>
+    </div>
+    <div class="meta" style="margin-top:6px">※ 한 코스에 사용자당 1개의 리뷰만 가능합니다.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
-    async function loadCustomers() {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
+const userId = () => document.getElementById('userSel').value;
+let map, mapMarkers = [], detailMap;
 
-      const table = document.getElementById('customer-table-body');
-      table.innerHTML = '';
+/* ---------- 공통 ---------- */
+function toast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (isErr?' err':'');
+  setTimeout(()=>t.className='toast', 2200);
+}
+async function api(path, opts){
+  const res = await fetch(path, opts);
+  if(res.status === 204 || res.status === 201){
+    try { return await res.json(); } catch { return {}; }
+  }
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.message || ('오류 ' + res.status));
+  return data;
+}
+const num = v => (v===null||v===undefined) ? '-' : v;
+const km  = v => (v===null||v===undefined) ? '-' : Number(v).toFixed(1)+'km';
+const mn  = v => (v===null||v===undefined) ? '-' : v+'분';
+function starStr(avg){
+  if(avg==null) return '<span class="meta" style="color:#fff">아직 평점 없음</span>';
+  const full = Math.round(avg);
+  return '★'.repeat(full) + '☆'.repeat(5-full) + ` <span style="font-size:.85rem">${Number(avg).toFixed(2)}</span>`;
+}
 
-      data.forEach(customer => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${customer.custid}</td>
-          <td>${customer.name}</td>
-          <td>${customer.address}</td>
-          <td>${customer.phone ?? '없음'}</td>
-        `;
-        table.appendChild(row);
+/* ---------- 탭 ---------- */
+document.getElementById('tabs').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  const tab = b.dataset.tab;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if(tab==='nearby' && !map) initMap();
+  if(tab==='ranking') loadRanking();
+  if(tab==='stats') loadStats();
+});
+document.getElementById('userSel').addEventListener('change', ()=>{
+  if(document.getElementById('view-stats').classList.contains('active')) loadStats();
+});
+
+/* ---------- 검색 ---------- */
+async function searchCourses(){
+  const p = new URLSearchParams();
+  const sido = document.getElementById('f-sido').value.trim();
+  const lvl  = document.getElementById('f-level').value;
+  const len  = document.getElementById('f-len').value;
+  const sort = document.getElementById('f-sort').value;
+  if(sido) p.set('sido', sido);
+  if(lvl)  p.set('maxLevel', lvl);
+  if(len)  p.set('maxLength', len);
+  if(sort) p.set('sort', sort);
+  const box = document.getElementById('search-results');
+  box.innerHTML = '<div class="empty">검색 중…</div>';
+  try{
+    const list = await api('/api/courses?'+p.toString());
+    renderCards(box, list, c=>`
+      <h3>${c.courseName}</h3>
+      <div>${c.sido?`<span class="tag">${c.sido} ${c.sigungu||''}</span>`:''}
+           <span class="tag">${c.levelName||'-'}</span></div>
+      <div class="meta">📏 ${km(c.lengthKm)} · ⏱ ${mn(c.timeMin)}</div>`,
+      c=>openDetail(c.courseId));
+  }catch(e){ box.innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+function renderCards(box, list, html, onClick){
+  if(!list || !list.length){ box.innerHTML='<div class="empty">결과가 없습니다.</div>'; return; }
+  box.innerHTML='';
+  list.forEach(item=>{
+    const d=document.createElement('div'); d.className='card'+(onClick?' click':''); d.innerHTML=html(item);
+    if(onClick) d.onclick=()=>onClick(item);
+    box.appendChild(d);
+  });
+}
+
+/* ---------- 지도 / 위치 ---------- */
+function initMap(){
+  map = L.map('map').setView([35.87,128.60], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+}
+function useMyLocation(prefix){
+  if(!navigator.geolocation){ toast('위치 기능을 쓸 수 없습니다',true); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    document.getElementById(prefix+'-lat').value = pos.coords.latitude.toFixed(4);
+    document.getElementById(prefix+'-lon').value = pos.coords.longitude.toFixed(4);
+    if(prefix==='n') findNearby(); else loadRecordCourses();
+  }, ()=>toast('위치를 가져오지 못했습니다',true));
+}
+async function findNearby(){
+  if(!map) initMap();
+  const lat=document.getElementById('n-lat').value, lon=document.getElementById('n-lon').value;
+  const limit=document.getElementById('n-limit').value||8;
+  const box=document.getElementById('nearby-results');
+  box.innerHTML='<div class="empty">검색 중…</div>';
+  try{
+    const list = await api(`/api/courses/nearby?lat=${lat}&lon=${lon}&limit=${limit}`);
+    mapMarkers.forEach(m=>map.removeLayer(m)); mapMarkers=[];
+    const me=L.circleMarker([lat,lon],{radius:8,color:'#b3261e',fillColor:'#b3261e',fillOpacity:.9})
+      .addTo(map).bindPopup('내 위치'); mapMarkers.push(me);
+    map.setView([lat,lon],12);
+    renderCards(box, list, c=>`
+      <h3>${c.courseName}</h3>
+      <div><span class="tag">${c.sido||''} ${c.sigungu||''}</span><span class="tag">${c.levelName||'-'}</span></div>
+      <div class="meta">🧭 약 ${km(c.distKm)} · 📏 ${km(c.lengthKm)}</div>`,
+      c=>openDetail(c.courseId));
+  }catch(e){ box.innerHTML=`<div class="empty">${e.message}</div>`; }
+}
+
+/* ---------- 산책 기록하기 ---------- */
+async function loadRecordCourses(){
+  const lat=document.getElementById('r-lat').value, lon=document.getElementById('r-lon').value;
+  const box=document.getElementById('record-results');
+  box.innerHTML='<div class="empty">주변 코스를 불러오는 중…</div>';
+  try{
+    const list = await api(`/api/courses/nearby?lat=${lat}&lon=${lon}&limit=5`);
+    if(!list.length){ box.innerHTML='<div class="empty">주변 코스가 없습니다.</div>'; return; }
+    const today = new Date().toISOString().slice(0,10);
+    box.innerHTML='';
+    list.forEach(c=>{
+      const d=document.createElement('div'); d.className='card';
+      d.innerHTML=`
+        <h3>${c.courseName}</h3>
+        <div><span class="tag">${c.sido||''} ${c.sigungu||''}</span><span class="tag">${c.levelName||'-'}</span></div>
+        <div class="meta">🧭 약 ${km(c.distKm)} · 📏 ${km(c.lengthKm)}</div>
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1"><label>날짜</label><input type="date" class="wl-date" value="${today}"></div>
+          <div style="flex:1"><label>소요(분)</label><input type="number" class="wl-min" min="0" placeholder="예: 40"></div>
+        </div>
+        <button class="btn sm" style="margin-top:8px;width:100%" onclick="recordWalk(this,'${c.courseId}')">🥾 이 코스 산책 기록</button>`;
+      box.appendChild(d);
+    });
+  }catch(e){ box.innerHTML=`<div class="empty">${e.message}</div>`; }
+}
+async function recordWalk(btn, courseId){
+  const card = btn.closest('.card');
+  const date = card.querySelector('.wl-date').value;
+  const minv = card.querySelector('.wl-min').value;
+  try{
+    await api('/api/walk-logs',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userId:+userId(), courseId, walkedOn:date, spentMin: minv? +minv : null})});
+    toast('🥾 산책 기록이 저장되었습니다 (내 통계에서 리뷰 가능)');
+    btn.textContent='✅ 기록됨'; btn.disabled=true; btn.style.opacity=.6;
+  }catch(e){ toast(e.message,true); }
+}
+
+/* ---------- 랭킹 ---------- */
+async function refreshRanking(){
+  try{ await api('/api/rankings/refresh',{method:'POST'}); toast('🔄 랭킹을 갱신했습니다'); loadRanking(); }
+  catch(e){ toast(e.message,true); }
+}
+async function loadRanking(){
+  for(const [type,el,at] of [['activity','rank-activity','rank-activity-at'],
+                             ['rating','rank-rating','rank-rating-at']]){
+    const box=document.getElementById(el);
+    box.innerHTML='<div class="empty">불러오는 중…</div>';
+    try{
+      const r=await api('/api/rankings/'+type);
+      if(!r.items||!r.items.length){ box.innerHTML='<div class="empty">랭킹 데이터가 아직 없습니다.<br><span class="meta">즐겨찾기·리뷰를 남기고 🔄 지금 갱신을 눌러주세요.</span></div>'; document.getElementById(at).textContent=''; continue; }
+      box.innerHTML='';
+      r.items.forEach(it=>{
+        const row=document.createElement('div'); row.className='rank-row';
+        row.innerHTML=`<div class="rank-no ${it.rankNo===1?'top':''}">${it.rankNo}</div>
+          <div style="flex:1"><b>${it.courseName}</b><div class="meta">${type==='rating'?'평균 '+Number(it.score).toFixed(2)+'점':it.score+'회'}</div></div>`;
+        box.appendChild(row);
+      });
+      document.getElementById(at).textContent = r.refreshedAt ? ('갱신: '+r.refreshedAt.replace('T',' ').slice(0,16)) : '';
+    }catch(e){ box.innerHTML=`<div class="empty">${e.message}</div>`; }
+  }
+}
+
+/* ---------- 통계 + 산책 로그 ---------- */
+async function loadStats(){
+  try{
+    const s=await api('/api/users/me/stats?userId='+userId());
+    document.getElementById('s-count').textContent=num(s.walkCount);
+    document.getElementById('s-dist').textContent = s.totalDistanceKm==null?'0':Number(s.totalDistanceKm).toFixed(1);
+    document.getElementById('s-min').textContent=num(s.totalMinutes);
+    const top=document.getElementById('s-top');
+    if(!s.topCourses||!s.topCourses.length){ top.innerHTML='<div class="empty">아직 산책 기록이 없습니다. "산책 기록하기" 탭에서 기록해 보세요.</div>'; }
+    else{
+      top.innerHTML='';
+      s.topCourses.forEach((c,i)=>{
+        const row=document.createElement('div'); row.className='rank-row';
+        row.innerHTML=`<div class="rank-no ${i===0?'top':''}">${i+1}</div>
+          <div style="flex:1"><b>${c.courseName}</b><div class="meta">${c.visitCount}회 방문</div></div>
+          <button class="btn ghost sm" onclick="openDetail('${c.courseId}')">상세</button>`;
+        top.appendChild(row);
       });
     }
+  }catch(e){ toast(e.message,true); }
+  loadWalkLogs();
+}
+async function loadWalkLogs(){
+  const box=document.getElementById('s-logs');
+  box.innerHTML='<div class="empty">불러오는 중…</div>';
+  try{
+    const logs=await api('/api/users/me/walk-logs?userId='+userId()+'&limit=30');
+    if(!logs.length){ box.innerHTML='<div class="empty">산책 로그가 없습니다. "산책 기록하기" 탭에서 기록하면 여기서 리뷰를 쓸 수 있어요.</div>'; return; }
+    box.innerHTML='';
+    logs.forEach(l=>{
+      const row=document.createElement('div'); row.className='log-row';
+      row.innerHTML=`
+        <div class="grow"><b>${l.courseName}</b>
+          <div class="meta">${l.sido||''} ${l.sigungu||''} · 📅 ${l.walkedOn} · ⏱ ${mn(l.spentMin)}</div></div>`;
+      const detailBtn=document.createElement('button');
+      detailBtn.className='btn ghost sm'; detailBtn.textContent='상세';
+      detailBtn.onclick=()=>openDetail(l.courseId);
+      const revBtn=document.createElement('button');
+      revBtn.className='btn sm'; revBtn.textContent='✍️ 리뷰 쓰기';
+      revBtn.onclick=()=>openReview(l.courseId, l.courseName);
+      row.appendChild(detailBtn); row.appendChild(revBtn);
+      box.appendChild(row);
+    });
+  }catch(e){ box.innerHTML=`<div class="empty">${e.message}</div>`; }
+}
+
+/* ---------- 리뷰 모달 ---------- */
+let reviewCourseId=null, pickedRating=0;
+function openReview(courseId, courseName){
+  reviewCourseId=courseId; pickedRating=0;
+  document.getElementById('rm-course').textContent=courseName;
+  document.getElementById('rm-comment').value='';
+  const sp=document.getElementById('rm-stars');
+  sp.innerHTML=[1,2,3,4,5].map(n=>`<span data-n="${n}">★</span>`).join('');
+  sp.querySelectorAll('span').forEach(s=>{ s.onclick=()=>{ pickedRating=+s.dataset.n; paintStars(); }; });
+  paintStars();
+  document.getElementById('reviewModal').classList.add('open');
+}
+function paintStars(){
+  document.querySelectorAll('#rm-stars span').forEach(s=>s.classList.toggle('on', +s.dataset.n<=pickedRating));
+}
+function closeReview(){ document.getElementById('reviewModal').classList.remove('open'); }
+async function submitReview(){
+  if(!pickedRating){ toast('별점을 선택하세요',true); return; }
+  try{
+    await api(`/api/courses/${encodeURIComponent(reviewCourseId)}/reviews`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userId:+userId(), rating:pickedRating, comment:document.getElementById('rm-comment').value})
+    });
+    toast('✍️ 리뷰가 등록되었습니다');
+    closeReview();
+  }catch(e){ toast(e.message,true); }
+}
+
+/* ---------- 상세 드로어 (읽기 전용 + 즐겨찾기) ---------- */
+async function openDetail(courseId){
+  const drawer=document.getElementById('drawer'), scrim=document.getElementById('scrim');
+  document.getElementById('d-body').innerHTML='<div class="empty">불러오는 중…</div>';
+  drawer.classList.add('open'); scrim.classList.add('open');
+  try{
+    const c=await api('/api/courses/'+encodeURIComponent(courseId));
+    document.getElementById('d-name').textContent=c.courseName;
+    document.getElementById('d-stars').innerHTML=starStr(c.avgRating)+
+      ` <span style="font-size:.8rem">· 리뷰 ${c.reviewCount}개</span>`;
+    document.getElementById('d-body').innerHTML=`
+      <div>${c.flagName?`<span class="tag">${c.flagName}</span>`:''}
+           <span class="tag">${c.sido||''} ${c.sigungu||''}</span>
+           <span class="tag">${c.levelName||'-'}</span></div>
+      <div id="detailMap"></div>
+      <div style="margin-top:12px">
+        <div class="kv"><b>거리</b><span>${km(c.lengthKm)}</span></div>
+        <div class="kv"><b>소요시간</b><span>${mn(c.timeMin)}</span></div>
+        <div class="kv"><b>화장실</b><span>${c.toiletInfo||'정보 없음'}</span></div>
+        <div class="kv"><b>편의점/매점</b><span>${c.storeInfo||'정보 없음'}</span></div>
+      </div>
+      ${c.description?`<p class="meta" style="margin-top:10px">${c.description}</p>`:''}
+      <button class="btn amber" style="width:100%;margin-top:14px" onclick="toggleFav('${c.courseId}')">⭐ 즐겨찾기 추가/해제</button>
+      <p class="meta" style="margin-top:10px">※ 산책 기록은 "산책 기록하기" 탭에서, 리뷰는 "내 통계"의 산책 로그에서 작성합니다.</p>`;
+    if(c.lat && c.lon){
+      setTimeout(()=>{
+        if(detailMap){ detailMap.remove(); detailMap=null; }
+        detailMap=L.map('detailMap').setView([c.lat,c.lon],14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(detailMap);
+        L.marker([c.lat,c.lon]).addTo(detailMap).bindPopup(c.courseName);
+      },80);
+    }
+  }catch(e){ document.getElementById('d-body').innerHTML=`<div class="empty">${e.message}</div>`; }
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('scrim').classList.remove('open');
+  if(detailMap){ detailMap.remove(); detailMap=null; }
+}
+async function toggleFav(courseId){
+  try{
+    const r=await api(`/api/courses/${encodeURIComponent(courseId)}/favorite/toggle?userId=${userId()}`,{method:'POST'});
+    toast(r.action==='ADDED'?'⭐ 즐겨찾기에 추가했어요':'즐겨찾기에서 해제했어요');
+  }catch(e){ toast(e.message,true); }
+}
+
+/* 초기 화면 */
+searchCourses();
 </script>
 </body>
 </html>

@@ -106,7 +106,9 @@ public class CourseRepository {
                          c.lat, c.lon, c.description
                 """;
         List<CourseDetailDto> result = jdbc.query(sql, (rs, n) -> {
-            Double avg = (Double) rs.getObject("avg_rating");
+            // MySQL AVG(...) 는 DECIMAL(BigDecimal) 로 오므로 Number 로 받는다 (Double 직접 캐스트 시 ClassCastException)
+            Object avgObj = rs.getObject("avg_rating");
+            Double avg = (avgObj == null) ? null : ((Number) avgObj).doubleValue();
             return new CourseDetailDto(
                     rs.getString("course_id"),
                     rs.getString("course_name"),

@@ -1,5 +1,6 @@
 package com.example.walking.repository;
 
+import com.example.walking.dto.WalkLogDto;
 import com.example.walking.dto.WalkStatsDto;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -55,6 +56,28 @@ public class WalkLogRepository {
                 rs.getString("course_id"),
                 rs.getString("course_name"),
                 rs.getLong("visit_count")), userId, limit);
+    }
+
+    /** 나의 산책 로그 — 최신순 (리뷰 작성 진입점) */
+    public List<WalkLogDto> findRecent(int userId, int limit) {
+        String sql = """
+                SELECT w.log_id, w.course_id, c.course_name, r.sido, r.sigungu,
+                       w.walked_on, w.spent_min
+                FROM   walk_log w
+                JOIN   course c ON w.course_id = c.course_id
+                JOIN   region r ON c.region_id = r.region_id
+                WHERE  w.user_id = ?
+                ORDER BY w.walked_on DESC, w.log_id DESC
+                LIMIT ?
+                """;
+        return jdbc.query(sql, (rs, n) -> new WalkLogDto(
+                rs.getLong("log_id"),
+                rs.getString("course_id"),
+                rs.getString("course_name"),
+                rs.getString("sido"),
+                rs.getString("sigungu"),
+                rs.getObject("walked_on", LocalDate.class),
+                (Integer) rs.getObject("spent_min")), userId, limit);
     }
 
     public static BigDecimal asBigDecimal(Object value) {

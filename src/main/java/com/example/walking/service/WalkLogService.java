@@ -1,5 +1,6 @@
 package com.example.walking.service;
 
+import com.example.walking.dto.WalkLogDto;
 import com.example.walking.dto.WalkLogRequestDto;
 import com.example.walking.exception.BadRequestException;
 import com.example.walking.exception.NotFoundException;
@@ -8,6 +9,7 @@ import com.example.walking.repository.WalkLogRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class WalkLogService {
@@ -35,5 +37,11 @@ public class WalkLogService {
         }
         LocalDate walkedOn = req.getWalkedOn() != null ? req.getWalkedOn() : LocalDate.now();
         walkLogRepo.insert(req.getUserId(), req.getCourseId(), walkedOn, req.getSpentMin());
+    }
+
+    /** 나의 산책 로그 최신순 */
+    public List<WalkLogDto> getRecentLogs(int userId, int limit) {
+        if (limit < 1 || limit > 100) limit = 20;
+        return walkLogRepo.findRecent(userId, limit);
     }
 }

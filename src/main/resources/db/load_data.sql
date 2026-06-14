@@ -95,7 +95,7 @@ UPDATE course c
 JOIN raw_course rc ON rc.ESNTL_ID = c.course_id
 SET c.time_min =
     CAST(REGEXP_SUBSTR(rc.COURS_TIME_CN, '[0-9]+') AS UNSIGNED) * 60
-  + CAST(REGEXP_SUBSTR(rc.COURS_TIME_CN, '([0-9]+)분') AS UNSIGNED)
+  + CAST(REGEXP_SUBSTR(rc.COURS_TIME_CN, '[0-9]+(?=분)') AS UNSIGNED)
 WHERE rc.COURS_TIME_CN REGEXP '[0-9]+시간[ ]?[0-9]+분';
 
 -- 5-2. 'N시간'
